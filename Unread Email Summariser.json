@@ -1,0 +1,249 @@
+{
+  "name": "Unread Email Summariser",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 5,
+        "simple": false,
+        "filters": {
+          "readStatus": "unread"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -368,
+        -96
+      ],
+      "id": "3fbea812-b3be-4f5b-b1fa-149c97fd7e7a",
+      "name": "Get many messages",
+      "webhookId": "a313cb31-d044-43a5-ba84-26b51d343a06",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2pdti65obugfIPEd",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Subject: {{ $json.headers.subject }}\nBody: {{ $json.text || $json.snippet }}",
+        "options": {
+          "systemMessage": "Summarize the provided email in exactly one single line. \nMaximum 20 words. \nDo not include any greetings, salutations, subject prefixes, or headings."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        16,
+        -224
+      ],
+      "id": "69cedc39-5582-4f55-9819-3017ae930a18",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -224,
+        -48
+      ],
+      "id": "a4fce2fc-6c2e-4e86-9064-c1437c73e6ea",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "CKYJiPk4NPKwppV6",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "=output",
+              "renameField": true,
+              "outputFieldName": "Summary"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        176,
+        0
+      ],
+      "id": "6c0312f1-92f7-43f6-8388-98b8ac04df07",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -80
+      ],
+      "id": "a58dbc95-bb9a-4183-9603-56481a619e69",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "88708c4f-db42-4187-bdfe-244801f9f6f2",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -208,
+        -208
+      ],
+      "id": "fae7aff8-3b3a-4e6b-92bb-7b82d81614de",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "arunaiforge@gmail.com",
+        "subject": "Latest 5 Unread Email Summaries",
+        "message": "={{ \"<ul>\" + $json.Summary.map(item => \"<li>\" + item + \"</li>\").join(\"\") + \"</ul>\" }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        16
+      ],
+      "id": "90be554e-925f-49a3-8b08-42d80bfacd11",
+      "name": "Send a message",
+      "webhookId": "285076aa-8b6d-4940-8558-12e62788bb95",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2pdti65obugfIPEd",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "0a664f51-f205-474a-90c3-f34e6f6f23b0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f0de81795d1c262191101f57e59ca96c36c3ffe0bf277c735784a71210da25ac"
+  },
+  "nodeGroups": [],
+  "id": "WM0osgLQOTyO73Yc",
+  "tags": []
+}
